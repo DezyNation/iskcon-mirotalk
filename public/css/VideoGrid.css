@@ -242,12 +242,12 @@ input[type='range'] {
 }
 
 /* Custom CSS Added by Sangam */
-@media screen and (max-width: 768px) {
+/* @media screen and (max-width: 768px) {
     .Camera {
         width: 45% !important;
         height: 45% !important;
     }
-}
+} */
 
 /* .videoMenuBar{
     display: none;
