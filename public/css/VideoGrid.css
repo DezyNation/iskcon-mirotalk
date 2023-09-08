@@ -249,6 +249,10 @@ input[type='range'] {
         width: 120px !important;
         height: 120px !important;
     }
+    .videoAvatarImage{
+        width: 75px !important;
+        height: 75px !important;
+    }
 }
 
 .videoMenuBar{

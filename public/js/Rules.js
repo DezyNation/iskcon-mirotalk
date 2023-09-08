@@ -10,7 +10,7 @@ const isRulesActive = true;
 
 const BUTTONS = {
     main: {
-        shareButton: true,
+        shareButton: false,
         hideMeButton: true,
         startAudioButton: true,
         startVideoButton: true,
@@ -18,9 +18,9 @@ const BUTTONS = {
         swapCameraButton: true,
         chatButton: true,
         participantsButton: true,
-        whiteboardButton: true,
+        whiteboardButton: false,
         settingsButton: true,
-        aboutButton: true, // Please keep me always visible, thank you!
+        aboutButton: false, // Please keep me always visible, thank you!
         exitButton: true,
     },
     settings: {
@@ -62,8 +62,8 @@ const BUTTONS = {
         chatMaxButton: true,
         chatSaveButton: true,
         chatEmojiButton: true,
-        chatMarkdownButton: true,
-        chatGPTButton: true,
+        chatMarkdownButton: false,
+        chatGPTButton: false,
         chatShareFileButton: true,
         chatSpeechStartButton: true,
     },
@@ -71,7 +71,7 @@ const BUTTONS = {
         saveInfoButton: true,
     },
     whiteboard: {
-        whiteboardLockButton: false,
+        whiteboardLockButton: true,
     },
     //...
 };
