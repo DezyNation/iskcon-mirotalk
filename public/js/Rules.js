@@ -17,7 +17,7 @@ const BUTTONS = {
         startScreenButton: true,
         swapCameraButton: true,
         chatButton: true,
-        participantsButton: false,
+        participantsButton: true,
         whiteboardButton: false,
         settingsButton: true,
         aboutButton: false, // Please keep me always visible, thank you!
