@@ -17,7 +17,7 @@ const BUTTONS = {
         startScreenButton: true,
         swapCameraButton: true,
         chatButton: true,
-        participantsButton: true,
+        participantsButton: false,
         whiteboardButton: false,
         settingsButton: true,
         aboutButton: false, // Please keep me always visible, thank you!
@@ -91,6 +91,8 @@ function handleRules(isPresenter) {
         BUTTONS.consumerVideo.muteVideoButton = false;
         BUTTONS.whiteboard.whiteboardLockButton = false;
         //...
+        BUTTONS.main.whiteboardButton = true;
+        BUTTONS.main.participantsButton = true;
     } else {
         BUTTONS.participantsList.saveInfoButton = true;
         BUTTONS.settings.lockRoomButton = !isRoomLocked;
