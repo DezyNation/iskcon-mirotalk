@@ -21,7 +21,7 @@ const BUTTONS = {
         whiteboardButton: false,
         settingsButton: true,
         aboutButton: false, // Please keep me always visible, thank you!
-        exitButton: true,
+        exitButton: false,
     },
     settings: {
         lockRoomButton: true, // presenter
@@ -91,8 +91,6 @@ function handleRules(isPresenter) {
         BUTTONS.consumerVideo.muteVideoButton = false;
         BUTTONS.whiteboard.whiteboardLockButton = false;
         //...
-        BUTTONS.main.whiteboardButton = true;
-        BUTTONS.main.participantsButton = true;
     } else {
         BUTTONS.participantsList.saveInfoButton = true;
         BUTTONS.settings.lockRoomButton = !isRoomLocked;
@@ -105,6 +103,8 @@ function handleRules(isPresenter) {
         BUTTONS.consumerVideo.muteVideoButton = true;
         BUTTONS.whiteboard.whiteboardLockButton = true;
         //...
+        BUTTONS.main.whiteboardButton = true;
+        BUTTONS.main.participantsButton = true;
 
         // ##################################
         // Auto detected rules for presenter
