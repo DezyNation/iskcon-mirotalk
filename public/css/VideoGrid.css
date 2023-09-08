@@ -254,3 +254,6 @@ input[type='range'] {
 .videoMenuBar{
     display: none;
 }
+.force-hide{
+    display: none !important;
+}
