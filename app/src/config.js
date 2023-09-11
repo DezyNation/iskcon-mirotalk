@@ -124,7 +124,7 @@ module.exports = {
             Umami: https://github.com/umami-software/umami
             We use Umami to track aggregated usage statistics in order to improve our service. 
         */
-        enabled: true,
+        enabled: false,
         src: 'https://stats.mirotalk.com/script.js',
         id: '41d26670-f275-45bb-af82-3ce91fe57756',
     },
@@ -143,7 +143,7 @@ module.exports = {
                 {
                     kind: 'audio',
                     mimeType: 'audio/opus',
-                    clockRate: 48000,
+                    clockRate: 24000,
                     channels: 2,
                 },
                 {
