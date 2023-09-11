@@ -133,7 +133,7 @@ module.exports = {
         numWorkers: Object.keys(os.cpus()).length,
         worker: {
             rtcMinPort: 40000,
-            rtcMaxPort: 40400,
+            rtcMaxPort: 40500,
             logLevel: 'error',
             logTags: ['info', 'ice', 'dtls', 'rtp', 'srtp', 'rtcp', 'rtx', 'bwe', 'score', 'simulcast', 'svc', 'sctp'],
         },
