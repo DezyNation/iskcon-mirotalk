@@ -165,9 +165,9 @@ class RoomClient {
         this.isVideoPictureInPictureSupported = !DetectRTC.isMobileDevice && document.pictureInPictureEnabled;
         this.isChatOpen = false;
         this.isChatEmojiOpen = false;
-        this.showChatOnMessage = true;
+        this.showChatOnMessage = false;
         this.isChatBgTransparent = false;
-        this.isVideoPinned = false;
+        this.isVideoPinned = true;
         this.pinnedVideoPlayerId = null;
         this.camVideo = false;
         this.camera = 'user';
@@ -2967,7 +2967,7 @@ class RoomClient {
         if (!this.showChatOnMessage) {
             this.userLog('info', `💬 New message from: ${data.peer_name}`, 'top-end');
         }
-        this.sound('message');
+        // this.sound('message');
     }
 
     setMsgAvatar(avatar, peerName) {
