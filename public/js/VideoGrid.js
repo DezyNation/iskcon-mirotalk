@@ -56,7 +56,7 @@ function resizeVideoMedia() {
 
     // loop (i recommend you optimize this)
     let i = 1;
-    while (i < 5000) {
+    while (i < 200) {
         let w = Area(i, Cameras.length, Width, Height, Margin);
         if (w === false) {
             max = i - 1;

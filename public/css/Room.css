@@ -353,9 +353,9 @@ th {
     padding: 5px;
     /* border: 1px solid grey; */
 }
-.settingsTable tr:nth-child(even) {
-    /* background-color: #121212; */
-}
+/* .settingsTable tr:nth-child(even) {
+    background-color: #121212;
+} */
 .settingsTable i {
     border: none;
     border-radius: 5px;
@@ -659,8 +659,8 @@ th {
 .msg-bubble-private,
 .msg-bubble {
     /* max-width: 200px; */
-    padding: 15px;
-    border-radius: 15px;
+    padding: 8px;
+    border-radius: 16px;
 }
 
 .msg-info {
@@ -684,6 +684,7 @@ th {
     overflow-wrap: break-word;
     word-wrap: break-word;
     hyphens: auto;
+    font-size: 10px;
 }
 
 .msg-text iframe {
@@ -711,7 +712,7 @@ a:hover {
     flex: 1;
     padding: 10px;
     height: 43px;
-    font-size: 14px;
+    font-size: 10px;
     color: #fff;
     border: none;
     border: var(--border);

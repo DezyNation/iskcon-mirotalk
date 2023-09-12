@@ -16,13 +16,13 @@ class LocalStorage {
         };
 
         this.SFU_SETTINGS = {
-            share_on_join: true, // popup message on join
-            show_chat_on_msg: true, // show chat on new message
+            share_on_join: false, // popup message on join
+            show_chat_on_msg: false, // show chat on new message
             video_fps: 0, // default 1280x768 30fps
             screen_fps: 0, // max 30fps
             lobby: false, // default false
             pitch_bar: true, // volume indicator
-            sounds: true, // room notify sounds
+            sounds: false, // room notify sounds
             host_ony_recording: false, // presenter
             video_obj_fit: 2, // cover
             video_controls: 0, // off

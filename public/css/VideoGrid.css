@@ -234,14 +234,16 @@ input[type='range'] {
 
 @media screen and (max-width: 600px) {
     .username {
-        font-size: 12px;
+        font-size: 8px;
     }
 }
 @media screen and (max-width: 500px) {
     .username {
-        font-size: 10px;
+        font-size: 8px;
+        display: none;
     }
 }
+
 
 /* Custom CSS Added by Sangam */
 @media screen and (max-width: 768px) {
@@ -253,7 +255,22 @@ input[type='range'] {
         width: 60px !important;
         height: 60px !important;
     }
+    .username {
+        font-size: 8px;
+    }
 }
+
+@media screen and (max-width: 1980px) {
+    .Camera {
+        width: 160px !important;
+        height: 160px !important;
+    }
+    .videoAvatarImage{
+        width: 80px !important;
+        height: 80px !important;
+    }
+}
+
 
 .videoMenuBar{
     display: none !important;

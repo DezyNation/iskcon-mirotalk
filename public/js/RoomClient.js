@@ -167,7 +167,7 @@ class RoomClient {
         this.isChatEmojiOpen = false;
         this.showChatOnMessage = false;
         this.isChatBgTransparent = false;
-        this.isVideoPinned = true;
+        this.isVideoPinned = false;
         this.pinnedVideoPlayerId = null;
         this.camVideo = false;
         this.camera = 'user';
@@ -2953,7 +2953,7 @@ class RoomClient {
     }
 
     showMessage(data) {
-        if (!this.isChatOpen && this.showChatOnMessage) this.toggleChat();
+        // if (!this.isChatOpen && this.showChatOnMessage) this.toggleChat();
         this.setMsgAvatar('left', data.peer_name);
         this.appendMessage(
             'left',
@@ -2964,9 +2964,9 @@ class RoomClient {
             data.to_peer_id,
             data.to_peer_name,
         );
-        if (!this.showChatOnMessage) {
-            this.userLog('info', `💬 New message from: ${data.peer_name}`, 'top-end');
-        }
+        // if (!this.showChatOnMessage) {
+        //     this.userLog('info', `💬 New message from: ${data.peer_name}`, 'top-end');
+        // }
         // this.sound('message');
     }
 
@@ -2998,28 +2998,8 @@ class RoomClient {
                     <div class="msg-info-name">${getFromName}</div>
                     <div class="msg-info-time">${time}</div>
                 </div>
-                <div id="${chatMessagesId}" class="msg-text">${message}
-                    <hr/>`;
-        // add btn direct reply to private message
-        if (getFromId != this.peer_id) {
-            msgHTML += `
-                    <button 
-                        class="fas fa-paper-plane"
-                        id="msg-private-reply-${chatMessagesId}"
-                        onclick="rc.sendMessageTo('${getFromId}','${getFromName}')"
-                    ></button>`;
-        }
-        msgHTML += `                    
-                    <button
-                        id="msg-delete-${chatMessagesId}"
-                        class="fas fa-trash" 
-                        onclick="rc.deleteMessage('msg-${chatMessagesId}')"
-                    ></button>
-                    <button
-                        id="msg-copy-${chatMessagesId}"
-                        class="fas fa-copy" 
-                        onclick="rc.copyToClipboard('${chatMessagesId}')"
-                    ></button>
+                <div id="${chatMessagesId}" class="msg-text">
+                ${message}
                 </div>
             </div>
         </div>
