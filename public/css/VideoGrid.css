@@ -246,7 +246,7 @@ input[type='range'] {
 
 
 /* Custom CSS Added by Sangam */
-@media screen and (max-width: 768px) {
+/* @media screen and (max-width: 768px) {
     .Camera {
         width: 120px !important;
         height: 120px !important;
@@ -258,7 +258,7 @@ input[type='range'] {
     .username {
         font-size: 8px;
     }
-}
+} */
 
 @media screen and (min-width: 769px) {
     .Camera {
