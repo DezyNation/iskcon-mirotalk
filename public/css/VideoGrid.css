@@ -262,8 +262,8 @@ input[type='range'] {
 
 @media screen and (max-width: 1980px) {
     .Camera {
-        width: 160px !important;
-        height: 160px !important;
+        width: 240px !important;
+        height: 200px !important;
     }
     .videoAvatarImage{
         width: 80px !important;
@@ -272,9 +272,9 @@ input[type='range'] {
 }
 
 
-.videoMenuBar{
+/* .videoMenuBar{
     display: none !important;
-}
+} */
 .force-hide{
     display: none !important;
 }
