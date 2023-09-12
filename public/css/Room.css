@@ -684,7 +684,7 @@ th {
     overflow-wrap: break-word;
     word-wrap: break-word;
     hyphens: auto;
-    font-size: 12px;
+    font-size: 14px;
 }
 
 .msg-text iframe {
@@ -712,7 +712,7 @@ a:hover {
     flex: 1;
     padding: 10px;
     height: 43px;
-    font-size: 12px;
+    font-size: 14px;
     color: #fff;
     border: none;
     border: var(--border);
