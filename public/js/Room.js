@@ -937,7 +937,7 @@ function roomIsReady() {
     BUTTONS.settings.lobbyButton && show(lobbyButton);
     BUTTONS.settings.host_only_recording && show(roomRecording);
     BUTTONS.main.aboutButton && show(aboutButton);
-    if (!DetectRTC.isMobileDevice) show(pinUnpinGridDiv);
+    // if (!DetectRTC.isMobileDevice) show(pinUnpinGridDiv);
     handleButtons();
     handleSelects();
     handleInputs();
