@@ -248,12 +248,12 @@ input[type='range'] {
 /* Custom CSS Added by Sangam */
 @media screen and (max-width: 768px) {
     .Camera {
-        width: 180px !important;
-        height: 140px !important;
+        min-width: 180px !important;
+        min-height: 140px !important;
     }
     .videoAvatarImage{
-        width: 60px !important;
-        height: 60px !important;
+        min-width: 60px !important;
+        min-height: 60px !important;
     }
     .username {
         font-size: 8px;
@@ -262,12 +262,12 @@ input[type='range'] {
 
 @media screen and (min-width: 769px) {
     .Camera {
-        width: 280px !important;
-        height: 200px !important;
+        min-width: 280px !important;
+        min-height: 200px !important;
     }
     .videoAvatarImage{
-        width: 80px !important;
-        height: 80px !important;
+        min-width: 80px !important;
+        min-height: 80px !important;
     }
 }
 
