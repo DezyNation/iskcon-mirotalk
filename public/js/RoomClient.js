@@ -9,7 +9,7 @@
  * @license For commercial or closed source, contact us at license.mirotalk@gmail.com or purchase directly via CodeCanyon
  * @license CodeCanyon: https://codecanyon.net/item/mirotalk-sfu-webrtc-realtime-video-conferences/40769970
  * @author  Miroslav Pejic - miroslav.pejic.85@gmail.com
- * @version 1.0.5
+ * @version 1.0.6
  *
  */
 
@@ -42,6 +42,8 @@ const html = {
 };
 
 const icons = {
+    chat: '<i class="fas fa-comments"></i>',
+    speech: '<i class="fas fa-volume-high"></i>',
     share: '<i class="fas fa-share-alt"></i>',
     ptt: '<i class="fa-solid fa-hand-pointer"></i>',
     lobby: '<i class="fas fa-shield-halved"></i>',
@@ -78,6 +80,7 @@ const image = {
 
 const mediaType = {
     audio: 'audioType',
+    audioTab: 'audioTab',
     video: 'videoType',
     camera: 'cameraType',
     screen: 'screenType',
@@ -113,7 +116,9 @@ const _EVENTS = {
     hostOnlyRecordingOff: 'hostOnlyRecordingOff',
 };
 
-let recordedBlobs;
+// Recording
+let recordedBlobs = [];
+
 class RoomClient {
     constructor(
         localAudioEl,
@@ -130,6 +135,7 @@ class RoomClient {
         isVideoAllowed,
         isScreenAllowed,
         joinRoomWithScreen,
+        isSpeechSynthesisSupported,
         successCallback,
     ) {
         this.localAudioEl = localAudioEl;
@@ -165,7 +171,9 @@ class RoomClient {
         this.isVideoPictureInPictureSupported = !DetectRTC.isMobileDevice && document.pictureInPictureEnabled;
         this.isChatOpen = false;
         this.isChatEmojiOpen = false;
-        this.showChatOnMessage = false;
+        this.isSpeechSynthesisSupported = isSpeechSynthesisSupported;
+        this.speechInMessages = false;
+        this.showChatOnMessage = true;
         this.isChatBgTransparent = false;
         this.isVideoPinned = false;
         this.pinnedVideoPlayerId = null;
@@ -178,8 +186,8 @@ class RoomClient {
         this.rightMsgAvatar = null;
 
         this.localVideoStream = null;
-        this.localScreenStream = null;
         this.localAudioStream = null;
+        this.localScreenStream = null;
         this.mediaRecorder = null;
         this.recScreenStream = null;
         this._isRecording = false;
@@ -197,6 +205,8 @@ class RoomClient {
         this.receiveInProgress = false;
         this.fileSharingInput = '*';
         this.chunkSize = 1024 * 16; // 16kb/s
+
+        this.audioRecorder = null;
 
         // Encodings
         this.forceVP8 = false; // Force VP8 codec for webcam and screen sharing
@@ -367,10 +377,10 @@ class RoomClient {
         } catch (error) {
             if (error.name === 'UnsupportedError') {
                 console.error('Browser not supported');
-                this.userLog('error', 'Browser not supported', 'center');
+                this.userLog('error', 'Browser not supported', 'center', 6000);
             }
             console.error('Browser not supported: ', error);
-            this.userLog('error', 'Browser not supported: ' + error, 'center');
+            this.userLog('error', 'Browser not supported: ' + error, 'center', 6000);
         }
         await device.load({
             routerRtpCapabilities,
@@ -688,6 +698,14 @@ class RoomClient {
         );
 
         this.socket.on(
+            'recordingAction',
+            function (data) {
+                console.log('Recording action:', data);
+                this.handleRecordingAction(data);
+            }.bind(this),
+        );
+
+        this.socket.on(
             'connect',
             function () {
                 console.log('Connected to signaling server!');
@@ -900,6 +918,11 @@ class RoomClient {
 
             this.producers.set(producer.id, producer);
 
+            // if screen sharing produce the tab audio + microphone
+            if (screen && stream.getAudioTracks()[0]) {
+                this.produceScreenAudio(stream);
+            }
+
             let elem, au;
             if (!audio) {
                 this.localVideoStream = stream;
@@ -978,11 +1001,6 @@ class RoomClient {
                     return;
             }
             this.sound('joined');
-
-            // if present produce the tab audio on screen share
-            if (screen && stream.getAudioTracks()[0]) {
-                this.produceScreenAudio(stream);
-            }
         } catch (err) {
             console.error('Produce error:', err);
 
@@ -1429,11 +1447,11 @@ class RoomClient {
                 if (isScreen) pn.click();
                 handleAspectRatio();
                 if (!this.isMobileDevice) {
-                    this.setTippy(pn.id, 'Toggle Pin', 'top-end');
-                    this.setTippy(pip.id, 'Toggle picture in picture', 'top-end');
-                    this.setTippy(ts.id, 'Snapshot', 'top-end');
-                    this.setTippy(vp.id, 'Toggle video privacy', 'top-end');
-                    this.setTippy(au.id, 'Audio status', 'top-end');
+                    this.setTippy(pn.id, 'Toggle Pin', 'bottom');
+                    this.setTippy(pip.id, 'Toggle picture in picture', 'bottom');
+                    this.setTippy(ts.id, 'Snapshot', 'bottom');
+                    this.setTippy(vp.id, 'Toggle video privacy', 'bottom');
+                    this.setTippy(au.id, 'Audio status', 'bottom');
                 }
                 console.log('[addProducer] Video-element-count', this.videoMediaContainer.childElementCount);
                 break;
@@ -1577,10 +1595,10 @@ class RoomClient {
 
     async produceScreenAudio(stream) {
         try {
-            this.stopMyAudio();
+            //this.stopMyAudio();
 
-            if (this.producerLabel.has(mediaType.audio)) {
-                return console.log('Producer already exists for this type ' + mediaType.audio);
+            if (this.producerLabel.has(mediaType.audioTab)) {
+                return console.log('Producer already exists for this type ' + mediaType.audioTab);
             }
 
             const track = stream.getAudioTracks()[0];
@@ -1600,8 +1618,8 @@ class RoomClient {
             const sa = await this.handleProducer(producerSa.id, mediaType.audio, stream);
 
             producerSa.on('trackended', () => {
-                this.closeProducer(mediaType.audio);
-                this.startMyAudio();
+                this.closeProducer(mediaType.audioTab);
+                // this.startMyAudio();
             });
 
             producerSa.on('transportclose', () => {
@@ -1624,7 +1642,7 @@ class RoomClient {
                 this.producers.delete(producerSa.id);
             });
 
-            this.producerLabel.set(mediaType.audio, producerSa.id);
+            this.producerLabel.set(mediaType.audioTab, producerSa.id);
         } catch (err) {
             console.error('Produce error:', err);
         }
@@ -1832,16 +1850,16 @@ class RoomClient {
                 handleAspectRatio();
                 console.log('[addConsumer] Video-element-count', this.videoMediaContainer.childElementCount);
                 if (!this.isMobileDevice) {
-                    this.setTippy(pn.id, 'Toggle Pin', 'top-end');
-                    this.setTippy(pip.id, 'Toggle picture in picture', 'top-end');
-                    this.setTippy(ts.id, 'Snapshot', 'top-end');
-                    this.setTippy(sf.id, 'Send file', 'top-end');
-                    this.setTippy(sm.id, 'Send message', 'top-end');
-                    this.setTippy(sv.id, 'Send video', 'top-end');
-                    this.setTippy(cm.id, 'Hide', 'top-end');
-                    this.setTippy(au.id, 'Mute', 'top-end');
-                    this.setTippy(pv.id, '🔊 Volume', 'top-end');
-                    this.setTippy(ko.id, 'Eject', 'top-end');
+                    this.setTippy(pn.id, 'Toggle Pin', 'bottom');
+                    this.setTippy(pip.id, 'Toggle picture in picture', 'bottom');
+                    this.setTippy(ts.id, 'Snapshot', 'bottom');
+                    this.setTippy(sf.id, 'Send file', 'bottom');
+                    this.setTippy(sm.id, 'Send message', 'bottom');
+                    this.setTippy(sv.id, 'Send video', 'bottom');
+                    this.setTippy(cm.id, 'Hide', 'bottom');
+                    this.setTippy(au.id, 'Mute', 'bottom');
+                    this.setTippy(pv.id, '🔊 Volume', 'bottom');
+                    this.setTippy(ko.id, 'Eject', 'bottom');
                 }
                 break;
             case mediaType.audio:
@@ -2001,12 +2019,12 @@ class RoomClient {
         handleAspectRatio();
         if (isParticipantsListOpen) getRoomParticipants(true);
         if (!this.isMobileDevice && remotePeer) {
-            this.setTippy(sm.id, 'Send message', 'top-end');
-            this.setTippy(sf.id, 'Send file', 'top-end');
-            this.setTippy(sv.id, 'Send video', 'top-end');
-            this.setTippy(au.id, 'Mute', 'top-end');
-            this.setTippy(pv.id, '🔊 Volume', 'top-end');
-            this.setTippy(ko.id, 'Eject', 'top-end');
+            this.setTippy(sm.id, 'Send message', 'bottom');
+            this.setTippy(sf.id, 'Send file', 'bottom');
+            this.setTippy(sv.id, 'Send video', 'bottom');
+            this.setTippy(au.id, 'Mute', 'bottom');
+            this.setTippy(pv.id, '🔊 Volume', 'bottom');
+            this.setTippy(ko.id, 'Eject', 'bottom');
         }
         console.log('[setVideoOff] Video-element-count', this.videoMediaContainer.childElementCount);
         //
@@ -2125,14 +2143,14 @@ class RoomClient {
                     if (err.name === 'SecurityError')
                         errorMessage = `You need to use HTTPS for selecting audio output device: ${err}`;
                     console.error('Attach SinkId error: ', errorMessage);
-                    this.userLog('error', errorMessage, 'top-end');
+                    this.userLog('error', errorMessage, 'top-end', 6000);
                     speakerSelect.selectedIndex = 0;
                     lS.setLocalStorageDevices(lS.MEDIA_TYPE.speaker, 0, speakerSelect.value);
                 });
         } else {
             let error = `Browser seems doesn't support output device selection.`;
             console.warn(error);
-            this.userLog('error', error, 'top-end');
+            this.userLog('error', error, 'top-end', 6000);
         }
     }
 
@@ -2152,11 +2170,19 @@ class RoomClient {
 
     setTippy(elem, content, placement, allowHTML = false) {
         if (DetectRTC.isMobileDevice) return;
-        tippy(this.getId(elem), {
-            content: content,
-            placement: placement,
-            allowHTML: allowHTML,
-        });
+        const element = this.getId(elem);
+        if (element) {
+            if (element._tippy) {
+                element._tippy.destroy();
+            }
+            tippy(element, {
+                content: content,
+                placement: placement,
+                allowHTML: allowHTML,
+            });
+        } else {
+            console.warn('setTippy element not found with content', content);
+        }
     }
 
     setVideoAvatarImgName(elemId, peer_name) {
@@ -2499,7 +2525,7 @@ class RoomClient {
         let videoPlayer = this.getId(elemId);
         let btnFs = this.getId(fsId);
         if (btnFs) {
-            this.setTippy(fsId, 'Full screen', 'top');
+            this.setTippy(fsId, 'Full screen', 'bottom');
             btnFs.addEventListener('click', () => {
                 if (videoPlayer.classList.contains('videoCircle')) {
                     return userLog('info', 'Full Screen not allowed if video on privacy mode', 'top-end');
@@ -2599,7 +2625,7 @@ class RoomClient {
     togglePin(position) {
         if (!this.isVideoPinned) return;
         switch (position) {
-            case 'top':
+            case 'top-end':
                 this.videoPinMediaContainer.style.top = '25%';
                 this.videoPinMediaContainer.style.width = '100%';
                 this.videoPinMediaContainer.style.height = '75%';
@@ -2882,7 +2908,7 @@ class RoomClient {
                             this.peer_name,
                         );
                         this.cleanMessage();
-                        this.sound('message');
+                        this.speechInMessages ? this.speechMessage(true, 'ChatGPT', completion) : this.sound('message');
                     }.bind(this),
                 )
                 .catch((err) => {
@@ -2964,10 +2990,10 @@ class RoomClient {
             data.to_peer_id,
             data.to_peer_name,
         );
-        // if (!this.showChatOnMessage) {
-        //     this.userLog('info', `💬 New message from: ${data.peer_name}`, 'top-end');
-        // }
-        // this.sound('message');
+        if (!this.showChatOnMessage) {
+            this.userLog('info', `💬 New message from: ${data.peer_name}`, 'top-end');
+        }
+        this.speechInMessages ? this.speechMessage(true, data.peer_name, data.peer_msg) : this.sound('message');
     }
 
     setMsgAvatar(avatar, peerName) {
@@ -2998,8 +3024,38 @@ class RoomClient {
                     <div class="msg-info-name">${getFromName}</div>
                     <div class="msg-info-time">${time}</div>
                 </div>
-                <div id="${chatMessagesId}" class="msg-text">
-                ${message}
+                <div id="${chatMessagesId}" class="msg-text">${message}
+                    <hr/>`;
+        // add btn direct reply to private message
+        if (getFromId != this.peer_id) {
+            msgHTML += `
+                    <button 
+                        class="fas fa-paper-plane"
+                        id="msg-private-reply-${chatMessagesId}"
+                        onclick="rc.sendMessageTo('${getFromId}','${getFromName}')"
+                    ></button>`;
+        }
+        msgHTML += `                    
+                    <button
+                        id="msg-delete-${chatMessagesId}"
+                        class="fas fa-trash" 
+                        onclick="rc.deleteMessage('msg-${chatMessagesId}')"
+                    ></button>
+                    <button
+                        id="msg-copy-${chatMessagesId}"
+                        class="fas fa-copy" 
+                        onclick="rc.copyToClipboard('${chatMessagesId}')"
+                    ></button>`;
+        if (this.isSpeechSynthesisSupported) {
+            msgHTML += `
+                <button
+                    id="msg-speech-${chatMessagesId}"
+                    class="fas fa-volume-high" 
+                    onclick="rc.speechMessage(false, '${getFromName}', '${this.formatMsg(getMsg)}')"
+                ></button>
+            `;
+        }
+        msgHTML += ` 
                 </div>
             </div>
         </div>
@@ -3009,6 +3065,7 @@ class RoomClient {
         chatMsger.scrollTop += 500;
         this.setTippy('msg-delete-' + chatMessagesId, 'Delete', 'top');
         this.setTippy('msg-copy-' + chatMessagesId, 'Copy', 'top');
+        this.setTippy('msg-speech-' + chatMessagesId, 'Speech', 'top');
         this.setTippy('msg-private-reply-' + chatMessagesId, 'Reply', 'top');
         chatMessagesId++;
     }
@@ -3040,7 +3097,7 @@ class RoomClient {
                 this.userLog('success', 'Message copied!', 'top-end', 1000);
             })
             .catch((err) => {
-                this.userLog('error', err, 'top-end', 2000);
+                this.userLog('error', err, 'top-end', 6000);
             });
     }
 
@@ -3175,6 +3232,13 @@ class RoomClient {
         });
     }
 
+    speechMessage(newMsg = true, from, msg) {
+        const speech = new SpeechSynthesisUtterance();
+        speech.text = (newMsg ? 'New' : '') + ' message from:' + from + '. The message is:' + msg;
+        speech.rate = 0.9;
+        window.speechSynthesis.speak(speech);
+    }
+
     chatToggleBg() {
         this.isChatBgTransparent = !this.isChatBgTransparent;
         this.isChatBgTransparent
@@ -3220,6 +3284,11 @@ class RoomClient {
     // RECORDING
     // ####################################################
 
+    handleRecordingError(error) {
+        console.error('Recording error', error);
+        this.userLog('error', error, 'top-end', 6000);
+    }
+
     getSupportedMimeTypes() {
         const possibleTypes = [
             'video/webm;codecs=vp9,opus',
@@ -3235,57 +3304,134 @@ class RoomClient {
 
     startRecording() {
         recordedBlobs = [];
-        let options = this.getSupportedMimeTypes();
-        console.log('MediaRecorder supported options', options);
-        options = { mimeType: options[0] };
+
+        // Get supported MIME types and set options
+        const supportedMimeTypes = this.getSupportedMimeTypes();
+        console.log('MediaRecorder supported options', supportedMimeTypes);
+        const options = { mimeType: supportedMimeTypes[0] };
+
         try {
-            if (this.isMobileDevice) {
-                // on mobile devices recording camera + audio
-                let newStream = this.getNewStream(this.localVideoStream, this.localAudioStream);
-                this.mediaRecorder = new MediaRecorder(newStream, options);
-                console.log('Created MediaRecorder', this.mediaRecorder, 'with options', options);
-                this.getId('swapCameraButton').className = 'hidden';
-                this._isRecording = true;
-                this.handleMediaRecorder();
-                this.event(_EVENTS.startRec);
-                this.sound('recStart');
-            } else {
-                // on desktop devices recording screen/window... + audio
-                const constraints = { video: true };
-                navigator.mediaDevices
-                    .getDisplayMedia(constraints)
-                    .then((screenStream) => {
-                        this.recScreenStream = this.getNewStream(screenStream, this.localAudioStream);
-                        this.mediaRecorder = new MediaRecorder(this.recScreenStream, options);
-                        console.log('Created MediaRecorder', this.mediaRecorder, 'with options', options);
-                        this._isRecording = true;
-                        this.handleMediaRecorder();
-                        this.event(_EVENTS.startRec);
-                        this.sound('recStart');
-                    })
-                    .catch((err) => {
-                        console.error('Error Unable to recording the screen + audio', err);
-                        this.userLog('error', 'Unable to recording the screen + audio reason: ' + err, 'top-end');
-                    });
-            }
+            this.audioRecorder = new MixedAudioRecorder();
+            const audioStreams = this.getAudioStreamFromAudioElements();
+            console.log('Audio streams tracks --->', audioStreams.getTracks());
+
+            const audioMixerStreams = this.audioRecorder.getMixedAudioStream([audioStreams, this.localAudioStream]);
+            const audioMixerTracks = audioMixerStreams.getTracks();
+            console.log('Audio mixer tracks --->', audioMixerTracks);
+
+            this.isMobileDevice
+                ? this.startMobileRecording(options, audioMixerTracks)
+                : this.startDesktopRecording(options, audioMixerTracks);
         } catch (err) {
-            console.error('Exception while creating MediaRecorder: ', err);
-            return this.userLog('error', "Can't start stream recording reason: " + err, 'top-end');
+            this.handleRecordingError('Exception while creating MediaRecorder: ' + err);
         }
     }
 
-    getNewStream(videoStream, audioStream) {
-        let newStream = null;
-        let videoStreamTrack = videoStream ? videoStream.getVideoTracks()[0] : undefined;
-        let audioStreamTrack = audioStream ? audioStream.getAudioTracks()[0] : undefined;
-        if (videoStreamTrack && audioStreamTrack) {
-            newStream = new MediaStream([videoStreamTrack, audioStreamTrack]);
-        } else if (videoStreamTrack) {
-            newStream = new MediaStream([videoStreamTrack]);
-        } else if (audioStreamTrack) {
-            newStream = new MediaStream([audioStreamTrack]);
+    startMobileRecording(options, audioMixerTracks) {
+        try {
+            // Combine audioMixerTracks and videoTracks into a single array
+            const combinedTracks = [];
+
+            if (Array.isArray(audioMixerTracks)) {
+                combinedTracks.push(...audioMixerTracks);
+            }
+
+            if (this.localVideoStream !== null) {
+                const videoTracks = this.localVideoStream.getVideoTracks();
+                console.log('Cam video tracks --->', videoTracks);
+
+                if (Array.isArray(videoTracks)) {
+                    combinedTracks.push(...videoTracks);
+                }
+            }
+
+            const recCamStream = new MediaStream(combinedTracks);
+            console.log('New Cam Media Stream tracks  --->', recCamStream.getTracks());
+
+            this.mediaRecorder = new MediaRecorder(recCamStream, options);
+            console.log('Created MediaRecorder', this.mediaRecorder, 'with options', options);
+
+            this.getId('swapCameraButton').className = 'hidden';
+
+            this.initRecording();
+        } catch (err) {
+            this.handleRecordingError('Unable to record the camera + audio: ' + err);
         }
-        return newStream;
+    }
+
+    startDesktopRecording(options, audioMixerTracks) {
+        // On desktop devices, record screen/window... + all audio tracks
+        const constraints = { video: true };
+        navigator.mediaDevices
+            .getDisplayMedia(constraints)
+            .then((screenStream) => {
+                const screenTracks = screenStream.getVideoTracks();
+                console.log('Screen video tracks --->', screenTracks);
+
+                const combinedTracks = [];
+                if (Array.isArray(screenTracks)) {
+                    combinedTracks.push(...screenTracks);
+                }
+                if (Array.isArray(audioMixerTracks)) {
+                    combinedTracks.push(...audioMixerTracks);
+                }
+
+                const recScreenStream = new MediaStream(combinedTracks);
+                console.log('New Screen/Window Media Stream tracks  --->', recScreenStream.getTracks());
+
+                this.recScreenStream = recScreenStream;
+                this.mediaRecorder = new MediaRecorder(recScreenStream, options);
+                console.log('Created MediaRecorder', this.mediaRecorder, 'with options', options);
+
+                this.initRecording();
+            })
+            .catch((err) => {
+                this.handleRecordingError('Unable to record the screen + audio: ' + err);
+            });
+    }
+
+    initRecording() {
+        this._isRecording = true;
+        this.handleMediaRecorder();
+        this.event(_EVENTS.startRec);
+        this.recordingAction('Start recording');
+        this.sound('recStart');
+    }
+
+    hasAudioTrack(mediaStream) {
+        if (!mediaStream) return false;
+        const audioTracks = mediaStream.getAudioTracks();
+        return audioTracks.length > 0;
+    }
+
+    hasVideoTrack(mediaStream) {
+        if (!mediaStream) return false;
+        const videoTracks = mediaStream.getVideoTracks();
+        return videoTracks.length > 0;
+    }
+
+    getAudioTracksFromAudioElements() {
+        const audioElements = document.querySelectorAll('audio');
+        const audioTracks = [];
+        audioElements.forEach((audio) => {
+            const audioTrack = audio.srcObject.getAudioTracks()[0];
+            if (audioTrack) {
+                audioTracks.push(audioTrack);
+            }
+        });
+        return audioTracks;
+    }
+
+    getAudioStreamFromAudioElements() {
+        const audioElements = document.querySelectorAll('audio');
+        const audioStream = new MediaStream();
+        audioElements.forEach((audio) => {
+            const audioTrack = audio.srcObject.getAudioTracks()[0];
+            if (audioTrack) {
+                audioStream.addTrack(audioTrack);
+            }
+        });
+        return audioStream;
     }
 
     handleMediaRecorder() {
@@ -3312,7 +3458,6 @@ class RoomClient {
             console.log('MediaRecorder Blobs: ', recordedBlobs);
 
             const dateTime = getDataTimeString();
-
             const type = recordedBlobs[0].type.includes('mp4') ? 'mp4' : 'webm';
             const blob = new Blob(recordedBlobs, { type: 'video/' + type });
             const recFileName = `${dateTime}-REC.${type}`;
@@ -3320,43 +3465,46 @@ class RoomClient {
             const blobFileSize = bytesToSize(blob.size);
             const recTime = document.getElementById('recordingStatus');
 
+            const recordingInfo = `
+                🔴 Recording Info: <br/><br/>
+                <ul>
+                    <li>Time: ${recTime.innerText}</li>
+                    <li>File: ${recFileName}</li>
+                    <li>Size: ${blobFileSize}</li>
+                </ul>
+                <br/>
+                Please wait to be processed, then will be downloaded to your ${currentDevice} device.
+            `;
+
             Swal.fire({
                 background: swalBackground,
                 position: 'center',
                 icon: 'success',
                 title: 'Recording',
-                html: `
-                <div style="text-align: left;">
-                    🔴 Recording Info: <br/><br/>
-                    <ul>
-                        <li>Time: ${recTime.innerText}</li>
-                        <li>File: ${recFileName}</li>
-                        <li>Size: ${blobFileSize}</li>
-                    </ul>
-                    <br/>
-                    Please wait to be processed, then will be downloaded to your ${currentDevice} device.
-                </div>`,
+                html: `<div style="text-align: left;">${recordingInfo}</div>`,
                 showClass: { popup: 'animate__animated animate__fadeInDown' },
                 hideClass: { popup: 'animate__animated animate__fadeOutUp' },
             });
 
             console.log('MediaRecorder Download Blobs');
             const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = recFileName;
-            document.body.appendChild(a);
-            a.click();
-            setTimeout(() => {
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(url);
-            }, 100);
-            console.log(`🔴 Recording FILE: ${recFileName} done 👍`);
 
-            recTime.innerText = '0s';
-        } catch (ex) {
-            console.warn('Recording save failed', ex);
+            const downloadLink = document.createElement('a');
+            downloadLink.style.display = 'none';
+            downloadLink.href = url;
+            downloadLink.download = recFileName;
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+
+            setTimeout(() => {
+                document.body.removeChild(downloadLink);
+                window.URL.revokeObjectURL(url);
+                console.log(`🔴 Recording FILE: ${recFileName} done 👍`);
+                recordedBlobs = [];
+                recTime.innerText = '0s';
+            }, 100);
+        } catch (err) {
+            console.error('Recording save failed', err);
         }
     }
 
@@ -3365,6 +3513,7 @@ class RoomClient {
             this._isRecording = false;
             this.mediaRecorder.pause();
             this.event(_EVENTS.pauseRec);
+            this.recordingAction('Pause recording');
         }
     }
 
@@ -3373,6 +3522,7 @@ class RoomClient {
             this._isRecording = true;
             this.mediaRecorder.resume();
             this.event(_EVENTS.resumeRec);
+            this.recordingAction('Resume recording');
         }
     }
 
@@ -3380,6 +3530,7 @@ class RoomClient {
         if (this.mediaRecorder) {
             this._isRecording = false;
             this.mediaRecorder.stop();
+            this.mediaRecorder = null;
             if (this.recScreenStream) {
                 this.recScreenStream.getTracks().forEach((track) => {
                     if (track.kind === 'video') track.stop();
@@ -3387,8 +3538,23 @@ class RoomClient {
             }
             if (this.isMobileDevice) this.getId('swapCameraButton').className = '';
             this.event(_EVENTS.stopRec);
+            this.audioRecorder.stopMixedAudioStream();
+            this.recordingAction('Stop recording');
             this.sound('recStop');
         }
+    }
+
+    recordingAction(action) {
+        if (!this.thereIsParticipants()) return;
+        this.socket.emit('recordingAction', {
+            peer_name: this.peer_name,
+            peer_id: this.peer_id,
+            action: action,
+        });
+    }
+
+    handleRecordingAction(data) {
+        this.userLog('warning', `${icons.recording} ${data.peer_name} ${data.action}`, 'top-end');
     }
 
     // ####################################################
@@ -3789,7 +3955,7 @@ class RoomClient {
                     this.socket.emit('shareVideoAction', data);
                     this.openVideo(data);
                 } else {
-                    this.userLog('error', 'Not valid video URL', 'top-end');
+                    this.userLog('error', 'Not valid video URL', 'top-end', 6000);
                 }
             }
         });
@@ -3893,8 +4059,8 @@ class RoomClient {
         });
         this.handlePN(video.id, pn.id, d.id);
         if (!this.isMobileDevice) {
-            this.setTippy(pn.id, 'Toggle Pin video player', 'top-end');
-            this.setTippy(e.id, 'Close video player', 'top-end');
+            this.setTippy(pn.id, 'Toggle Pin video player', 'bottom');
+            this.setTippy(e.id, 'Close video player', 'bottom');
         }
         console.log('[openVideo] Video-element-count', this.videoMediaContainer.childElementCount);
         this.sound('joined');
@@ -4046,26 +4212,30 @@ class RoomClient {
 
     roomMessage(action, active = false) {
         const status = active ? 'ON' : 'OFF';
+        this.sound('switch');
         switch (action) {
             case 'pitchBar':
-                this.sound('switch');
                 this.userLog('info', `${icons.pitchBar} Audio pitch bar ${status}`, 'top-end');
                 break;
             case 'sounds':
-                this.sound('switch');
                 this.userLog('info', `${icons.sounds} Sounds notification ${status}`, 'top-end');
                 break;
             case 'ptt':
-                this.sound('switch');
                 this.userLog('info', `${icons.ptt} Push to talk ${status}`, 'top-end');
                 break;
             case 'notify':
-                this.sound('switch');
                 this.userLog('info', `${icons.share} Share room on join ${status}`, 'top-end');
                 break;
             case 'hostOnlyRecording':
-                this.sound('switch');
                 this.userLog('info', `${icons.recording} Only host recording ${status}`, 'top-end');
+                break;
+            case 'showChat':
+                active
+                    ? userLog('info', `${icons.chat} Chat will be shown, when you receive a message`, 'top-end')
+                    : userLog('info', `${icons.chat} Chat not will be shown, when you receive a message`, 'top-end');
+                break;
+            case 'speechMessages':
+                this.userLog('info', `${icons.speech} Speech incoming messages ${status}`, 'top-end');
                 break;
             default:
                 break;
@@ -4485,6 +4655,42 @@ class RoomClient {
             if (!this.thereIsParticipants()) {
                 if (info) return this.userLog('info', 'No participants detected', 'top-end');
             }
+            switch (action) {
+                case 'mute':
+                    const peerAudioStatus = this.getId(data.peer_id + '__audio');
+                    if (!peerAudioStatus || peerAudioStatus.className == html.audioOff) {
+                        return this.userLog(
+                            'info',
+                            'The participant has been muted, and only they have the ability to unmute themselves',
+                            'top-end',
+                        );
+                    }
+                    break;
+                case 'hide':
+                    const peerVideoOff = this.getId(data.peer_id + '__videoOff');
+                    if (peerVideoOff) {
+                        return this.userLog(
+                            'info',
+                            'The participant is currently hidden, and only they have the option to unhide themselves',
+                            'top-end',
+                        );
+                    }
+                case 'stop':
+                    const peerScreenButton = this.getId(id);
+                    if (peerScreenButton) {
+                        const peerScreenStatus = peerScreenButton.querySelector('i');
+                        if (peerScreenStatus && peerScreenStatus.style.color == 'red') {
+                            return this.userLog(
+                                'info',
+                                'The participant screen is not shared, only the participant can initiate sharing',
+                                'top-end',
+                            );
+                        }
+                    }
+                    break;
+                default:
+                    break;
+            }
             this.confirmPeerAction(action, data);
         } else {
             switch (action) {
@@ -4647,7 +4853,6 @@ class RoomClient {
                         if (result.isConfirmed) {
                             muteHideStopConfirmed = true;
                             if (!data.broadcast) {
-                                this.socket.emit('peerAction', data);
                                 switch (action) {
                                     case 'mute':
                                         let peerAudioButton = this.getId(data.peer_id + '___pAudio');
@@ -4662,6 +4867,7 @@ class RoomClient {
                                     default:
                                         break;
                                 }
+                                this.socket.emit('peerAction', data);
                             } else {
                                 this.socket.emit('peerAction', data);
                                 let actionButton = this.getId(action + 'AllButton');

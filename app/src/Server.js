@@ -40,7 +40,7 @@ dependencies: {
  * @license For commercial or closed source, contact us at license.mirotalk@gmail.com or purchase directly via CodeCanyon
  * @license CodeCanyon: https://codecanyon.net/item/mirotalk-sfu-webrtc-realtime-video-conferences/40769970
  * @author  Miroslav Pejic - miroslav.pejic.85@gmail.com
- * @version 1.0.5
+ * @version 1.0.6
  *
  */
 
@@ -573,6 +573,10 @@ function startServer() {
             log.error('Client error', error);
             socket.destroy();
         });
+        socket.on('error', (err) => {
+            log.error('Socket error:', err);
+            socket.destroy();
+        });
 
         socket.on('createRoom', async ({ room_id }, callback) => {
             socket.room_id = room_id;
@@ -808,6 +812,7 @@ function startServer() {
 
             // let objLength = bytesToSize(Object.keys(data).length);
             // log.debug('Send Whiteboard canvas JSON', { length: objLength });
+
             room.broadCast(socket.id, 'wbCanvasToJson', data);
         });
 
@@ -831,6 +836,18 @@ function startServer() {
 
             log.debug('Video off', getPeerName(room));
             room.broadCast(socket.id, 'setVideoOff', data);
+        });
+
+        socket.on('recordingAction', async (dataObject) => {
+            if (!roomList.has(socket.room_id)) return;
+
+            const data = checkXSS(dataObject);
+
+            log.debug('Recording action', data);
+
+            const room = roomList.get(socket.room_id);
+
+            room.broadCast(data.peer_id, 'recordingAction', data);
         });
 
         socket.on('join', async (dataObject, cb) => {
@@ -1147,6 +1164,8 @@ function startServer() {
                 if (room.isLobbyEnabled()) {
                     room.setLobbyEnabled(false);
                 }
+                if (roomList.has(socket.room_id)) roomList.delete(socket.room_id);
+
                 delete presenters[socket.room_id];
                 log.debug('Disconnect - current presenters grouped by roomId', presenters);
             }

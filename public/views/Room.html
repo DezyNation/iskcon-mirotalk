@@ -76,6 +76,7 @@
         <script defer src="https://rawgit.com/leizongmin/js-xss/master/dist/xss.js"></script>
         <script defer src="../js/LocalStorage.js"></script>
         <script defer src="../js/Rules.js"></script>
+        <script defer src="../js/Helpers.js"></script>
         <script defer src="../js/Room.js"></script>
         <script defer src="../js/RoomClient.js"></script>
         <script defer src="../js/SpeechRec.js"></script>
@@ -89,6 +90,7 @@
         <script defer src="https://unpkg.com/@popperjs/core@2"></script>
         <script defer src="https://unpkg.com/tippy.js@6"></script>
         <script defer src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+        <script defer src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
     </head>
     <body onload="initClient()">
         <noscript>You need to enable JavaScript to run this app.</noscript>
@@ -140,6 +142,10 @@ access to use this app.
             <button id="stopAudioButton" class="hidden"><i class="fas fa-microphone"></i></button>
             <button id="startScreenButton" class="hidden"><i class="fas fa-desktop"></i></button>
             <button id="stopScreenButton" class="hidden"><i class="fas fa-stop-circle"></i></button>
+            <button id="startRecButton" class="hidden"><i class="fas fa-record-vinyl"></i></button>
+            <button id="stopRecButton" style="color: red" class="hidden"><i class="fas fa-record-vinyl"></i></button>
+            <button id="raiseHandButton" class="hidden"><i class="fas fa-hand-paper"></i></button>
+            <button id="lowerHandButton" class="hidden"><i id="lowerHandIcon" class="fas fa-hand-paper"></i></button>
             <button id="chatButton" class="hidden"><i class="fas fa-comments"></i></button>
             <button id="participantsButton" class="hidden"><i class="fas fa-users"></i></button>
             <button id="whiteboardButton" class="hidden"><i class="fas fa-chalkboard-teacher"></i></button>
@@ -188,15 +194,6 @@ access to use this app.
                         <button id="fullScreenButton" class="hidden">
                             <i class="fas fa-expand-alt"></i>
                             <p>Full screen mode</p>
-                        </button>
-                        <br />
-                        <button id="raiseHandButton" class="hidden">
-                            <i class="fas fa-hand-paper"></i>
-                            <p>Raise hand</p>
-                        </button>
-                        <button id="lowerHandButton" class="hidden">
-                            <i id="lowerHandIcon" class="fas fa-hand-paper"></i>
-                            <p>Lower hand</p>
                         </button>
                         <br />
                         <button id="fileShareButton" class="hidden">
@@ -401,15 +398,29 @@ access to use this app.
                     </div>
 
                     <div id="tabRecording" class="tabcontent">
-                        <button id="startRecButton" class="hidden">
-                            <i class="fas fa-record-vinyl"></i>
-                            <p>Start recording</p>
-                        </button>
-                        <button id="stopRecButton" class="hidden">
-                            <i class="fas fa-stop-circle"></i>
-                            <p>Stop recording</p>
-                        </button>
                         <br />
+                        <div id="roomRecording" class="hidden">
+                            <table class="settingsTable">
+                                <tr>
+                                    <td class="custom-width">
+                                        <div class="title">
+                                            <i class="fa-solid fa-user-shield"></i>
+                                            <p>Only host</p>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="form-check form-switch form-switch-md title">
+                                            <input
+                                                id="switchHostOnlyRecording"
+                                                class="form-check-input"
+                                                type="checkbox"
+                                            />
+                                        </div>
+                                    </td>
+                                </tr>
+                            </table>
+                            <hr style="border: 1px solid grey" />
+                        </div>
                         <button id="pauseRecButton" class="hidden">
                             <i class="far fa-pause-circle"></i>
                             <p>Pause recording</p>
@@ -429,28 +440,6 @@ access to use this app.
                                         </div>
                                     </td>
                                     <td id="recordingStatus">0s</td>
-                                </tr>
-                            </table>
-                        </div>
-                        <div id="roomRecording" class="hidden">
-                            <hr style="border: 1px solid grey" />
-                            <table class="settingsTable">
-                                <tr>
-                                    <td class="custom-width">
-                                        <div class="title">
-                                            <i class="fa-solid fa-user-shield"></i>
-                                            <p>Only host</p>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="form-check form-switch form-switch-md title">
-                                            <input
-                                                id="switchHostOnlyRecording"
-                                                class="form-check-input"
-                                                type="checkbox"
-                                            />
-                                        </div>
-                                    </td>
                                 </tr>
                             </table>
                         </div>
@@ -653,6 +642,7 @@ access to use this app.
                     <button id="whiteboardUndoBtn" class="fas fa-undo"></button>
                     <button id="whiteboardRedoBtn" class="fas fa-redo"></button>
                     <button id="whiteboardImgFileBtn" class="far fa-image"></button>
+                    <button id="whiteboardPdfFileBtn" class="far fa-file-pdf"></button>
                     <button id="whiteboardImgUrlBtn" class="fas fa-link"></button>
                     <button id="whiteboardTextBtn" class="fas fa-spell-check"></button>
                     <button id="whiteboardLineBtn" class="fas fa-slash"></button>
@@ -686,6 +676,18 @@ access to use this app.
                         <button id="chatCloseButton" class="fas fa-times"></button>
                         <button id="chatMaxButton" class="hidden"><i class="fas fa-expand"></i></button>
                         <button id="chatMinButton" class="hidden"><i class="fas fa-compress"></i></button>
+                        <div style="margin-left: 10px" class="title">
+                            <i class="fa-solid fa-eye"></i>
+                            <div style="margin-left: 5px" class="form-check form-switch form-switch-md">
+                                <input class="form-check-input" type="checkbox" id="showChatOnMsg" checked />
+                            </div>
+                        </div>
+                        <div id="speechMsgDiv" class="title">
+                            <i class="fas fa-volume-high"></i>
+                            <div style="margin-left: 5px" class="form-check form-switch form-switch-md">
+                                <input class="form-check-input" type="checkbox" id="speechIncomingMsg" />
+                            </div>
+                        </div>
                     </div>
                     <div class="chat-header-options">
                         <button id="chatGhostButton" class="fas fa-circle-half-stroke"></button>
@@ -730,9 +732,6 @@ access to use this app.
                     <button id="chatPasteButton" class="hidden">
                         <i class="fas fa-paste"></i>
                     </button>
-                    <div style="margin-left: 10px" class="form-check form-switch form-switch-md">
-                        <input class="form-check-input" type="checkbox" id="showChatOnMsg" checked />
-                    </div>
                     <button id="chatSendButton" class="hidden">
                         <i class="fas fa-paper-plane"></i>
                     </button>

@@ -11,7 +11,7 @@ if (location.href.substr(0, 5) !== 'https') location.href = 'https' + location.h
  * @license For commercial or closed source, contact us at license.mirotalk@gmail.com or purchase directly via CodeCanyon
  * @license CodeCanyon: https://codecanyon.net/item/mirotalk-sfu-webrtc-realtime-video-conferences/40769970
  * @author  Miroslav Pejic - miroslav.pejic.85@gmail.com
- * @version 1.0.5
+ * @version 1.0.6
  *
  */
 
@@ -50,7 +50,10 @@ const userAgent = navigator.userAgent.toLowerCase();
 const isTabletDevice = isTablet(userAgent);
 const isIPadDevice = isIpad(userAgent);
 
+const Base64Prefix = 'data:application/pdf;base64,';
+
 const wbImageInput = 'image/*';
+const wbPdfInput = 'application/pdf';
 const wbWidth = 1200;
 const wbHeight = 600;
 
@@ -103,6 +106,7 @@ let isVideoControlsOn = false;
 let isChatPasteTxt = false;
 let isChatMarkdownOn = false;
 let isChatGPTOn = false;
+let isSpeechSynthesisSupported = 'speechSynthesis' in window;
 let joinRoomWithoutAudioVideo = true;
 let joinRoomWithScreen = false;
 let initAudioButton = null;
@@ -140,31 +144,8 @@ const RoomURL = window.location.origin + '/join/' + room_id;
 function initClient() {
     setTheme();
     if (!DetectRTC.isMobileDevice) {
-        setTippy('shareButton', 'Share room', 'right');
-        setTippy('hideMeButton', 'Toggle hide self view', 'right');
-        setTippy('startAudioButton', 'Start the audio', 'right');
-        setTippy('stopAudioButton', 'Stop the audio', 'right');
-        setTippy('startVideoButton', 'Start the video', 'right');
-        setTippy('stopVideoButton', 'Stop the video', 'right');
-        setTippy('startScreenButton', 'Start screen share', 'right');
-        setTippy('stopScreenButton', 'Stop screen share', 'right');
-        setTippy('swapCameraButton', 'Swap the camera', 'right');
-        setTippy('chatButton', 'Toggle the chat', 'right');
-        setTippy('participantsButton', 'Toggle participants', 'right');
-        setTippy('whiteboardButton', 'Toggle the whiteboard', 'right');
-        setTippy('settingsButton', 'Toggle the settings', 'right');
-        setTippy('aboutButton', 'About this project', 'right');
-        setTippy('exitButton', 'Leave room', 'right');
-        setTippy('mySettingsCloseBtn', 'Close', 'right');
-        setTippy('tabVideoDevicesBtn', 'Video devices', 'top');
-        setTippy('tabAudioDevicesBtn', 'Audio devices', 'top');
-        setTippy('tabRecordingBtn', 'Recording', 'top');
-        setTippy('tabRoomBtn', 'Room', 'top');
-        setTippy('tabVideoShareBtn', 'Video share', 'top');
-        setTippy('tabProfileBtn', 'Profile', 'top');
-        setTippy('tabAspectBtn', 'Aspect', 'top');
-        setTippy('tabStylingBtn', 'Styling', 'top');
-        setTippy('tabLanguagesBtn', 'Languages', 'top');
+        refreshMainButtonsToolTipPlacement();
+        setTippy('mySettingsCloseBtn', 'Close', 'bottom');
         setTippy(
             'switchPushToTalk',
             'If Active, When SpaceBar keydown the microphone will be resumed, on keyup will be paused, like a walkie-talkie.',
@@ -191,6 +172,7 @@ function initClient() {
         setTippy('whiteboardUndoBtn', 'Undo', 'bottom');
         setTippy('whiteboardRedoBtn', 'Redo', 'bottom');
         setTippy('whiteboardImgFileBtn', 'Add image file', 'bottom');
+        setTippy('whiteboardPdfFileBtn', 'Add pdf file', 'bottom');
         setTippy('whiteboardImgUrlBtn', 'Add image url', 'bottom');
         setTippy('whiteboardTextBtn', 'Add text', 'bottom');
         setTippy('whiteboardLineBtn', 'Add line', 'bottom');
@@ -205,7 +187,8 @@ function initClient() {
         setTippy('chatCleanTextButton', 'Clean', 'top');
         setTippy('chatPasteButton', 'Paste', 'top');
         setTippy('chatSendButton', 'Send', 'top');
-        setTippy('showChatOnMsg', 'Show chat on new message comes', 'top');
+        setTippy('showChatOnMsg', 'Show chat on new message comes', 'bottom');
+        setTippy('speechIncomingMsg', 'Speech the incoming messages', 'bottom');
         setTippy('chatSpeechStartButton', 'Start speech recognition', 'top');
         setTippy('chatSpeechStopButton', 'Stop speech recognition', 'top');
         setTippy('chatEmojiButton', 'Emoji', 'top');
@@ -215,10 +198,10 @@ function initClient() {
         setTippy('chatCleanButton', 'Clean', 'bottom');
         setTippy('chatSaveButton', 'Save', 'bottom');
         setTippy('chatGhostButton', 'Toggle transparent background', 'bottom');
-        setTippy('chatCloseButton', 'Close', 'right');
-        setTippy('chatMaxButton', 'Maximize', 'right');
-        setTippy('chatMinButton', 'Minimize', 'right');
-        setTippy('participantsCloseBtn', 'Close', 'left');
+        setTippy('chatCloseButton', 'Close', 'bottom');
+        setTippy('chatMaxButton', 'Maximize', 'bottom');
+        setTippy('chatMinButton', 'Minimize', 'bottom');
+        setTippy('participantsCloseBtn', 'Close', 'right');
         setTippy('participantsSaveBtn', 'Save participants info', 'right');
     }
     setupWhiteboard();
@@ -226,15 +209,52 @@ function initClient() {
 }
 
 // ####################################################
+// HANDLE MAIN BUTTONS TOOLTIP
+// ####################################################
+
+function refreshMainButtonsToolTipPlacement() {
+    if (!DetectRTC.isMobileDevice) {
+        const placement = BtnsBarPosition.options[BtnsBarPosition.selectedIndex].value == 'vertical' ? 'right' : 'top';
+        setTippy('shareButton', 'Share room', placement);
+        setTippy('hideMeButton', 'Toggle hide self view', placement);
+        setTippy('startAudioButton', 'Start the audio', placement);
+        setTippy('stopAudioButton', 'Stop the audio', placement);
+        setTippy('startVideoButton', 'Start the video', placement);
+        setTippy('stopVideoButton', 'Stop the video', placement);
+        setTippy('startScreenButton', 'Start screen share', placement);
+        setTippy('stopScreenButton', 'Stop screen share', placement);
+        setTippy('startRecButton', 'Start recording', placement);
+        setTippy('stopRecButton', 'Stop recording', placement);
+        setTippy('raiseHandButton', 'Raise your hand', placement);
+        setTippy('lowerHandButton', 'Lower your hand', placement);
+        setTippy('swapCameraButton', 'Swap the camera', placement);
+        setTippy('chatButton', 'Toggle the chat', placement);
+        setTippy('participantsButton', 'Toggle participants', placement);
+        setTippy('whiteboardButton', 'Toggle the whiteboard', placement);
+        setTippy('settingsButton', 'Toggle the settings', placement);
+        setTippy('aboutButton', 'About this project', placement);
+        setTippy('exitButton', 'Leave room', placement);
+    }
+}
+
+// ####################################################
 // HANDLE TOOLTIP
 // ####################################################
 
 function setTippy(elem, content, placement, allowHTML = false) {
-    tippy(document.getElementById(elem), {
-        content: content,
-        placement: placement,
-        allowHTML: allowHTML,
-    });
+    const element = document.getElementById(elem);
+    if (element) {
+        if (element._tippy) {
+            element._tippy.destroy();
+        }
+        tippy(element, {
+            content: content,
+            placement: placement,
+            allowHTML: allowHTML,
+        });
+    } else {
+        console.warn('setTippy element not found with content', content);
+    }
 }
 
 // ####################################################
@@ -605,6 +625,26 @@ function whoAreYou() {
         default_name = getCookie(room_id + '_name');
     }
 
+    if (!BUTTONS.main.startVideoButton) {
+        isVideoAllowed = false;
+        elemDisplay('initVideo', false);
+        elemDisplay('initVideoButton', false);
+        elemDisplay('initAudioVideoButton', false);
+        elemDisplay('initVideoSelect', false);
+        elemDisplay('tabVideoDevicesBtn', false);
+    }
+    if (!BUTTONS.main.startAudioButton) {
+        isAudioAllowed = false;
+        elemDisplay('initAudioButton', false);
+        elemDisplay('initAudioVideoButton', false);
+        elemDisplay('initMicrophoneSelect', false);
+        elemDisplay('initSpeakerSelect', false);
+        elemDisplay('tabAudioDevicesBtn', false);
+    }
+    if (!BUTTONS.main.startScreenButton) {
+        hide(initStartScreenButton);
+    }
+
     const initUser = document.getElementById('initUser');
     initUser.classList.toggle('hidden');
 
@@ -634,14 +674,16 @@ function whoAreYou() {
     }).then(() => {
         if (initStream && !joinRoomWithScreen) {
             stopTracks(initStream);
-            hide(initVideo);
+            // hide(initVideo);
+            elemDisplay('initVideo', false);
         }
         getPeerInfo();
         joinRoom(peer_name, room_id);
     });
 
     if (!isVideoAllowed) {
-        hide(initVideo);
+        // hide(initVideo);
+        elemDisplay('initVideo', false);
         hide(initVideoSelect);
     }
     if (!isAudioAllowed) {
@@ -692,13 +734,14 @@ function handleAudioVideo() {
 }
 
 function checkInitVideo(isVideoAllowed) {
-    if (isVideoAllowed) {
+    if (isVideoAllowed && BUTTONS.main.startVideoButton) {
         if (initVideoSelect.value) changeCamera(initVideoSelect.value);
         sound('joined');
     } else {
         if (initStream) {
             stopTracks(initStream);
-            hide(initVideo);
+            // hide(initVideo);
+            elemDisplay('initVideo', false);
             sound('left');
         }
     }
@@ -725,6 +768,9 @@ function checkMedia() {
         let queryPeerVideo = video === '1' || video === 'true';
         if (queryPeerVideo != null) isVideoAllowed = queryPeerVideo;
     }
+    elemDisplay('tabVideoDevicesBtn', isVideoAllowed);
+    elemDisplay('tabAudioDevicesBtn', isAudioAllowed);
+
     console.log('Direct join', {
         audio: isAudioAllowed,
         video: isVideoAllowed,
@@ -867,6 +913,7 @@ function joinRoom(peer_name, room_id) {
             isVideoAllowed,
             isScreenAllowed,
             joinRoomWithScreen,
+            isSpeechSynthesisSupported,
             roomIsReady,
         );
         handleRoomClientEvents();
@@ -882,6 +929,7 @@ function roomIsReady() {
     if (BUTTONS.settings.tabRecording) {
         show(startRecButton);
     } else {
+        hide(startRecButton);
         hide(tabRecordingBtn);
     }
     BUTTONS.main.chatButton && show(chatButton);
@@ -937,7 +985,8 @@ function roomIsReady() {
     BUTTONS.settings.lobbyButton && show(lobbyButton);
     BUTTONS.settings.host_only_recording && show(roomRecording);
     BUTTONS.main.aboutButton && show(aboutButton);
-    // if (!DetectRTC.isMobileDevice) show(pinUnpinGridDiv);
+    if (!DetectRTC.isMobileDevice) show(pinUnpinGridDiv);
+    if (!isSpeechSynthesisSupported) hide(speechMsgDiv);
     handleButtons();
     handleSelects();
     handleInputs();
@@ -953,7 +1002,8 @@ function roomIsReady() {
 }
 
 function elemDisplay(element, display, mode = 'block') {
-    element.style.display = display ? mode : 'none';
+    const elem = document.getElementById(element);
+    elem ? (elem.style.display = display ? mode : 'none') : console.error('elemDisplay not found', element);
 }
 
 function hide(elem) {
@@ -1235,6 +1285,9 @@ function handleButtons() {
     whiteboardImgFileBtn.onclick = () => {
         whiteboardAddObj('imgFile');
     };
+    whiteboardPdfFileBtn.onclick = () => {
+        whiteboardAddObj('pdfFile');
+    };
     whiteboardImgUrlBtn.onclick = () => {
         whiteboardAddObj('imgUrl');
     };
@@ -1371,7 +1424,8 @@ function setSelectsInit() {
 async function changeCamera(deviceId) {
     if (initStream) {
         stopTracks(initStream);
-        show(initVideo);
+        //show(initVideo);
+        elemDisplay('initVideo', true);
         if (!initVideo.classList.contains('mirror')) {
             initVideo.classList.toggle('mirror');
         }
@@ -1411,13 +1465,17 @@ async function changeCamera(deviceId) {
 async function toggleScreenSharing() {
     if (initStream) {
         stopTracks(initStream);
-        show(initVideo);
+        //show(initVideo);
+        elemDisplay('initVideo', true);
     }
     joinRoomWithScreen = !joinRoomWithScreen;
     if (joinRoomWithScreen) {
         navigator.mediaDevices
             .getDisplayMedia({ audio: true, video: true })
             .then((screenStream) => {
+                if (initVideo.classList.contains('mirror')) {
+                    initVideo.classList.toggle('mirror');
+                }
                 initVideo.srcObject = screenStream;
                 initStream = screenStream;
                 console.log('04.6 ----> Success attached init screen video stream', initStream);
@@ -1571,6 +1629,7 @@ function handleSelects() {
         rc.changeBtnsBarPosition(BtnsBarPosition.value);
         lsSettings.buttons_bar = BtnsBarPosition.selectedIndex;
         lS.setSettings(lsSettings);
+        refreshMainButtonsToolTipPlacement();
     };
     pinVideoPosition.onchange = () => {
         rc.togglePin(pinVideoPosition.value);
@@ -1579,14 +1638,16 @@ function handleSelects() {
     };
     // chat
     showChatOnMsg.onchange = (e) => {
-        sound('switch');
         rc.showChatOnMessage = e.currentTarget.checked;
-        if (rc.showChatOnMessage) {
-            userLog('info', 'Chat will be shown, when you receive a message', 'top-end');
-        } else {
-            userLog('info', 'Chat not will be shown, when you receive a message', 'top-end');
-        }
+        rc.roomMessage('showChat', rc.showChatOnMessage);
         lsSettings.show_chat_on_msg = rc.showChatOnMessage;
+        lS.setSettings(lsSettings);
+        e.target.blur();
+    };
+    speechIncomingMsg.onchange = (e) => {
+        rc.speechInMessages = e.currentTarget.checked;
+        rc.roomMessage('speechMessages', rc.speechInMessages);
+        lsSettings.speech_in_msg = rc.speechInMessages;
         lS.setSettings(lsSettings);
         e.target.blur();
     };
@@ -1617,16 +1678,52 @@ function handleInputs() {
     };
     chatMessage.oninput = function () {
         const chatInputEmoji = {
-            '<3': '\u2764\uFE0F',
-            '</3': '\uD83D\uDC94',
-            ':D': '\uD83D\uDE00',
-            ':)': '\uD83D\uDE03',
-            ';)': '\uD83D\uDE09',
-            ':(': '\uD83D\uDE12',
-            ':p': '\uD83D\uDE1B',
-            ';p': '\uD83D\uDE1C',
-            ":'(": '\uD83D\uDE22',
-            ':+1:': '\uD83D\uDC4D',
+            '<3': '❤️',
+            '</3': '💔',
+            ':D': '😀',
+            ':)': '😃',
+            ';)': '😉',
+            ':(': '😒',
+            ':p': '😛',
+            ';p': '😜',
+            ":'(": '😢',
+            ':+1:': '👍',
+            ':*': '😘',
+            ':O': '😲',
+            ':|': '😐',
+            ':*(': '😭',
+            XD: '😆',
+            ':B': '😎',
+            ':P': '😜',
+            '<(': '👎',
+            '>:(': '😡',
+            ':S': '😟',
+            ':X': '🤐',
+            ';(': '😥',
+            ':T': '😖',
+            ':@': '😠',
+            ':$': '🤑',
+            ':&': '🤗',
+            ':#': '🤔',
+            ':!': '😵',
+            ':W': '😷',
+            ':%': '🤒',
+            ':*!': '🤩',
+            ':G': '😬',
+            ':R': '😋',
+            ':M': '🤮',
+            ':L': '🥴',
+            ':C': '🥺',
+            ':F': '🥳',
+            ':Z': '🤢',
+            ':^': '🤓',
+            ':K': '🤫',
+            ':D!': '🤯',
+            ':H': '🧐',
+            ':U': '🤥',
+            ':V': '🤪',
+            ':N': '🥶',
+            ':J': '🥴',
         };
         for (let i in chatInputEmoji) {
             let regex = new RegExp(i.replace(/([()[{*+.$^\\|?])/g, '\\$1'), 'gim');
@@ -1659,9 +1756,11 @@ function handleInputs() {
 
 function loadSettingsFromLocalStorage() {
     rc.showChatOnMessage = lsSettings.show_chat_on_msg;
+    rc.speechInMessages = lsSettings.speech_in_msg;
     isPitchBarEnabled = lsSettings.pitch_bar;
     isSoundEnabled = lsSettings.sounds;
     showChatOnMsg.checked = rc.showChatOnMessage;
+    speechIncomingMsg.checked = rc.speechInMessages;
     switchPitchBar.checked = isPitchBarEnabled;
     switchSounds.checked = isSoundEnabled;
     switchShare.checked = notify;
@@ -1675,6 +1774,7 @@ function loadSettingsFromLocalStorage() {
     rc.handleVideoControls(BtnVideoControls.value);
     rc.changeBtnsBarPosition(BtnsBarPosition.value);
     rc.togglePin(pinVideoPosition.value);
+    refreshMainButtonsToolTipPlacement();
 }
 
 // ####################################################
@@ -2193,6 +2293,40 @@ function whiteboardAddObj(type) {
                 }
             });
             break;
+        case 'pdfFile':
+            Swal.fire({
+                allowOutsideClick: false,
+                background: swalBackground,
+                position: 'center',
+                title: 'Select the PDF',
+                input: 'file',
+                inputAttributes: {
+                    accept: wbPdfInput,
+                    'aria-label': 'Select the PDF',
+                },
+                showDenyButton: true,
+                confirmButtonText: `OK`,
+                denyButtonText: `Cancel`,
+                showClass: { popup: 'animate__animated animate__fadeInDown' },
+                hideClass: { popup: 'animate__animated animate__fadeOutUp' },
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    let wbCanvasPdf = result.value;
+                    if (wbCanvasPdf && wbCanvasPdf.size > 0) {
+                        let reader = new FileReader();
+                        reader.onload = async function (event) {
+                            wbCanvas.requestRenderAll();
+                            await pdfToImage(event.target.result, wbCanvas);
+                            whiteboardIsDrawingMode(false);
+                            wbCanvasToJson();
+                        };
+                        reader.readAsDataURL(wbCanvasPdf);
+                    } else {
+                        userLog('error', 'File not selected or empty', 'top-end');
+                    }
+                }
+            });
+            break;
         case 'text':
             const text = new fabric.IText('Lorem Ipsum', {
                 top: 0,
@@ -2252,11 +2386,73 @@ function whiteboardAddObj(type) {
     }
 }
 
+function readBlob(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.addEventListener('load', () => resolve(reader.result));
+        reader.addEventListener('error', reject);
+        reader.readAsDataURL(blob);
+    });
+}
+
+async function loadPDF(pdfData, pages) {
+    const pdfjsLib = window['pdfjs-dist/build/pdf'];
+    pdfData = pdfData instanceof Blob ? await readBlob(pdfData) : pdfData;
+    const data = atob(pdfData.startsWith(Base64Prefix) ? pdfData.substring(Base64Prefix.length) : pdfData);
+    try {
+        const pdf = await pdfjsLib.getDocument({ data }).promise;
+        const numPages = pdf.numPages;
+        const canvases = await Promise.all(
+            Array.from({ length: numPages }, (_, i) => {
+                const pageNumber = i + 1;
+                if (pages && pages.indexOf(pageNumber) === -1) return null;
+                return pdf.getPage(pageNumber).then(async (page) => {
+                    const viewport = page.getViewport({ scale: window.devicePixelRatio });
+                    const canvas = document.createElement('canvas');
+                    const context = canvas.getContext('2d');
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
+                    const renderContext = {
+                        canvasContext: context,
+                        viewport: viewport,
+                    };
+                    await page.render(renderContext).promise;
+                    return canvas;
+                });
+            }),
+        );
+        return canvases.filter((canvas) => canvas !== null);
+    } catch (error) {
+        console.error('Error loading PDF:', error);
+        throw error;
+    }
+}
+
+async function pdfToImage(pdfData, canvas) {
+    const scale = 1 / window.devicePixelRatio;
+    try {
+        const canvases = await loadPDF(pdfData);
+        canvases.forEach(async (c) => {
+            canvas.add(
+                new fabric.Image(await c, {
+                    scaleX: scale,
+                    scaleY: scale,
+                }),
+            );
+        });
+    } catch (error) {
+        console.error('Error converting PDF to images:', error);
+        throw error;
+    }
+}
+
 function addWbCanvasObj(obj) {
     if (obj) {
         wbCanvas.add(obj).setActiveObject(obj);
         whiteboardIsDrawingMode(false);
         wbCanvasToJson();
+    } else {
+        console.error('Invalid input. Expected an obj of canvas elements');
     }
 }
 
@@ -2417,18 +2613,18 @@ function whiteboardAction(data, emit = true) {
             break;
         case 'lock':
             if (!isPresenter) {
-                elemDisplay(whiteboardTitle, false);
-                elemDisplay(whiteboardOptions, false);
-                elemDisplay(whiteboardButton, false);
+                elemDisplay('whiteboardTitle', false);
+                elemDisplay('whiteboardOptions', false);
+                elemDisplay('whiteboardButton', false);
                 wbDrawing(false);
                 wbIsLock = true;
             }
             break;
         case 'unlock':
             if (!isPresenter) {
-                elemDisplay(whiteboardTitle, true, 'flex');
-                elemDisplay(whiteboardOptions, true, 'inline');
-                elemDisplay(whiteboardButton, true);
+                elemDisplay('whiteboardTitle', true, 'flex');
+                elemDisplay('whiteboardOptions', true, 'inline');
+                elemDisplay('whiteboardButton', true);
                 wbDrawing(true);
                 wbIsLock = false;
             }
@@ -2816,11 +3012,28 @@ function showAbout() {
         html: `
         <br/>
         <div id="about">
-            <b><a id="github-button" data-umami-event="GitHub button" href="https://github.com/miroslavpejic85/mirotalksfu" target="_blank">Open Source</a></b> project
-            <br/><br />
-            <button id="sponsor-button" data-umami-event="Sponsor button" class="pulsate" onclick="window.open('https://github.com/sponsors/miroslavpejic85?o=esb')"><i class="fas fa-heart"></i> Support</button>
+            <button 
+                id="support-button" 
+                data-umami-event="Support button" 
+                class="pulsate" 
+                onclick="window.open('https://codecanyon.net/user/miroslavpejic85')">
+                <i class="fas fa-heart"></i> 
+                Support
+            </button>
             <br /><br />
-            Author: <a id="linkedin-button" data-umami-event="Linkedin button" href="https://www.linkedin.com/in/miroslav-pejic-976a07101/" target="_blank"> Miroslav Pejic</a>
+            Author: <a 
+                id="linkedin-button" 
+                data-umami-event="Linkedin button" 
+                href="https://www.linkedin.com/in/miroslav-pejic-976a07101/" target="_blank"> 
+                Miroslav Pejic
+            </a>
+            <br /><br />
+            Email:<a 
+                id="email-button" 
+                data-umami-event="Email button" 
+                href="mailto:miroslav.pejic.85@gmail.com?subject=MiroTalk SFU info"> 
+                miroslav.pejic.85@gmail.com
+            </a>
         </div>
         `,
         showClass: { popup: 'animate__animated animate__fadeInDown' },
