@@ -173,7 +173,7 @@ class RoomClient {
         this.isChatEmojiOpen = false;
         this.isSpeechSynthesisSupported = isSpeechSynthesisSupported;
         this.speechInMessages = false;
-        this.showChatOnMessage = true;
+        this.showChatOnMessage = false;
         this.isChatBgTransparent = false;
         this.isVideoPinned = false;
         this.pinnedVideoPlayerId = null;
@@ -2993,7 +2993,7 @@ class RoomClient {
         if (!this.showChatOnMessage) {
             this.userLog('info', `💬 New message from: ${data.peer_name}`, 'top-end');
         }
-        this.speechInMessages ? this.speechMessage(true, data.peer_name, data.peer_msg) : this.sound('message');
+        this.speechInMessages ? this.speechMessage(true, data.peer_name, data.peer_msg) : console.log("New msg sound disabled");
     }
 
     setMsgAvatar(avatar, peerName) {
